@@ -25,6 +25,7 @@ def build_flow(client_id: str, client_secret: str, redirect_uri: str) -> Flow:
         },
         scopes=SCOPES,
         redirect_uri=redirect_uri,
+        autogenerate_code_verifier=False,
     )
 
 
