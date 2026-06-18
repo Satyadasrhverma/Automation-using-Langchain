@@ -511,6 +511,8 @@
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <div style="position:relative;display:flex;align-items:center;gap:4px;">
+      <button id="gmailSetupBtn" onclick="openGmailSetupModal()" title="Google OAuth Setup"
+        style="width:20px;height:20px;border-radius:50%;border:1.5px solid #94a3b8;background:none;color:#64748b;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">⚙</button>
       <button id="gmailBadge" class="gmail-badge disconnected" onclick="handleGmailBadgeClick()" title="Gmail connection status">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
@@ -591,6 +593,46 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
       </svg>
       Get Started
+    </button>
+  </div>
+</div>
+
+<!-- GOOGLE CREDENTIALS SETUP MODAL -->
+<div class="api-overlay hidden" id="gmailSetupOverlay">
+  <div class="api-card" style="max-width:420px;">
+    <div class="api-icon">📧</div>
+    <h2>Google OAuth Setup</h2>
+    <p>Enter your Google Cloud OAuth credentials. These are stored in your browser only.<br/>
+      <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--primary);font-weight:500;font-size:.82rem;">Get credentials from Google Cloud Console →</a>
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+      <div class="api-input-wrap" style="margin-bottom:0;">
+        <input type="text" id="gClientId" placeholder="Client ID  (ends in .apps.googleusercontent.com)" autocomplete="off"
+          style="font-size:.82rem;padding-right:14px;" />
+      </div>
+      <div class="api-input-wrap" style="margin-bottom:0;">
+        <input type="password" id="gClientSecret" placeholder="Client Secret  (GOCSPX-…)" autocomplete="off" />
+        <button class="api-eye" onclick="toggleGSecret()" title="Show/hide">
+          <svg id="gEyeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="api-error" id="gmailCredsError">Please enter both Client ID and Client Secret.</div>
+
+    <button class="btn-api-start" onclick="saveGmailCreds()" style="background:#ea4335;">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="width:17px;height:17px">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
+      </svg>
+      Save &amp; Connect Gmail
+    </button>
+    <button onclick="document.getElementById('gmailSetupOverlay').classList.add('hidden')"
+      style="width:100%;margin-top:8px;padding:9px;border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:.85rem;border-radius:8px;">
+      Cancel
     </button>
   </div>
 </div>
@@ -1192,6 +1234,7 @@
 
   // ── Gmail OAuth ────────────────────────────────────────────────────────────
   let gmailAuthorized = false;
+  let googleCredsConfig = JSON.parse(localStorage.getItem("google_oauth_creds") || "null");
 
   async function checkGmailStatus() {
     try {
@@ -1226,14 +1269,64 @@
     if (box) box.style.display = "none";
   });
 
-  function handleGmailBadgeClick() {
+  function openGmailSetupModal() {
+    if (googleCredsConfig) {
+      document.getElementById("gClientId").value = googleCredsConfig.clientId || "";
+      document.getElementById("gClientSecret").value = googleCredsConfig.clientSecret || "";
+    }
+    document.getElementById("gmailCredsError").style.display = "none";
+    document.getElementById("gmailSetupOverlay").classList.remove("hidden");
+  }
+
+  function toggleGSecret() {
+    const inp = document.getElementById("gClientSecret");
+    inp.type = inp.type === "password" ? "text" : "password";
+  }
+
+  async function saveGmailCreds() {
+    const clientId     = document.getElementById("gClientId").value.trim();
+    const clientSecret = document.getElementById("gClientSecret").value.trim();
+    const errEl        = document.getElementById("gmailCredsError");
+    if (!clientId || !clientSecret) { errEl.style.display = "block"; return; }
+    errEl.style.display = "none";
+
+    googleCredsConfig = { clientId, clientSecret };
+    localStorage.setItem("google_oauth_creds", JSON.stringify(googleCredsConfig));
+
+    // Send to backend so OAuth flow can use them
+    try {
+      await fetch("/set-google-creds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
+      });
+    } catch(_) {}
+
+    document.getElementById("gmailSetupOverlay").classList.add("hidden");
+    window.location.href = "/auth/google";
+  }
+
+  async function handleGmailBadgeClick() {
     if (gmailAuthorized) {
       if (confirm("Disconnect Gmail? You will need to reconnect to send emails.")) {
-        fetch("/auth/revoke", { method: "POST" })
-          .then(() => { gmailAuthorized = false; updateGmailBadge(); });
+        await fetch("/auth/revoke", { method: "POST" });
+        gmailAuthorized = false;
+        updateGmailBadge();
       }
-    } else {
+      return;
+    }
+    // If user has saved Google creds locally, sync to server then go to OAuth
+    if (googleCredsConfig) {
+      try {
+        await fetch("/set-google-creds", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ client_id: googleCredsConfig.clientId, client_secret: googleCredsConfig.clientSecret })
+        });
+      } catch(_) {}
       window.location.href = "/auth/google";
+    } else {
+      openGmailSetupModal();
     }
   }
 

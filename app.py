@@ -299,9 +299,22 @@ def auth_status():
     return jsonify({"authorized": authorized})
 
 
+@app.route("/set-google-creds", methods=["POST"])
+def set_google_creds():
+    body = request.get_json(silent=True) or {}
+    cid = body.get("client_id", "").strip()
+    cs  = body.get("client_secret", "").strip()
+    if cid and cs:
+        session["g_client_id"]     = cid
+        session["g_client_secret"] = cs
+    return jsonify({"ok": True})
+
+
 @app.route("/auth/google")
 def auth_google():
-    flow = build_flow(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI)
+    cid = session.get("g_client_id")     or GOOGLE_CLIENT_ID
+    cs  = session.get("g_client_secret") or GOOGLE_CLIENT_SECRET
+    flow = build_flow(cid, cs, GOOGLE_REDIRECT_URI)
     auth_url, state = flow.authorization_url(
         access_type="offline",
         prompt="select_account consent",
@@ -313,7 +326,9 @@ def auth_google():
 
 @app.route("/auth/callback")
 def auth_callback():
-    flow = build_flow(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI)
+    cid = session.get("g_client_id")     or GOOGLE_CLIENT_ID
+    cs  = session.get("g_client_secret") or GOOGLE_CLIENT_SECRET
+    flow = build_flow(cid, cs, GOOGLE_REDIRECT_URI)
     flow.fetch_token(authorization_response=request.url)
     session["gmail_creds"] = flow.credentials.to_json()
     return redirect("/?gmail=connected")
