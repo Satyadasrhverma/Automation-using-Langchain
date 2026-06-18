@@ -11,11 +11,16 @@ from generators.mailer import build_flow, creds_from_json, send_offer_email
 
 load_dotenv(override=True)
 
-os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")  # allow http for local dev
+# Allow HTTP only in local dev; Vercel always uses HTTPS
+if os.getenv("VERCEL") != "1":
+    os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
-app.config["UPLOAD_FOLDER"] = "uploads"
+
+# Vercel only allows writes to /tmp
+_upload_base = "/tmp" if os.getenv("VERCEL") == "1" else "."
+app.config["UPLOAD_FOLDER"] = os.path.join(_upload_base, "uploads")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
