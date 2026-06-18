@@ -302,7 +302,7 @@ def auth_status():
 @app.route("/auth/google")
 def auth_google():
     flow = build_flow(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI)
-    auth_url, state = flow.authorization_url(access_type="offline", prompt="consent")
+    auth_url, state = flow.authorization_url(access_type="offline", prompt="select_account consent")
     session["oauth_code_verifier"] = flow.code_verifier
     session["oauth_state"] = state
     return redirect(auth_url)
