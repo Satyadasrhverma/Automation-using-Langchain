@@ -17,6 +17,8 @@ if os.getenv("VERCEL") != "1":
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("VERCEL") == "1"
 
 # Vercel only allows writes to /tmp
 _upload_base = "/tmp" if os.getenv("VERCEL") == "1" else "."
@@ -297,22 +299,19 @@ def auth_status():
     return jsonify({"authorized": authorized})
 
 
-_pending_oauth = {}  # holds code_verifier between /auth/google and /auth/callback
-
-
 @app.route("/auth/google")
 def auth_google():
     flow = build_flow(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI)
     auth_url, state = flow.authorization_url(access_type="offline", prompt="consent")
-    _pending_oauth["code_verifier"] = flow.code_verifier
-    _pending_oauth["state"] = state
+    session["oauth_code_verifier"] = flow.code_verifier
+    session["oauth_state"] = state
     return redirect(auth_url)
 
 
 @app.route("/auth/callback")
 def auth_callback():
     flow = build_flow(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI)
-    flow.code_verifier = _pending_oauth.pop("code_verifier", None)
+    flow.code_verifier = session.pop("oauth_code_verifier", None)
     flow.fetch_token(authorization_response=request.url)
     session["gmail_creds"] = flow.credentials.to_json()
     return redirect("/?gmail=connected")
