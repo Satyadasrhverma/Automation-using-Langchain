@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HR Offer Letter Generator</title>
+  <title>OfferStack</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -56,7 +56,7 @@
       font-size: 1.1rem;
       color: var(--primary);
     }
-    .nav-brand svg { width: 28px; height: 28px; }
+    .nav-brand img { width: 36px; height: 36px; object-fit: contain; }
     .nav-badge {
       background: var(--primary-light);
       color: var(--primary-dark);
@@ -262,7 +262,8 @@
     .form-group { display: flex; flex-direction: column; gap: 5px; }
     .form-group.full { grid-column: 1 / -1; }
     .form-group label { font-size: .82rem; font-weight: 600; color: var(--text-muted); }
-    .form-group input {
+    .form-group input,
+    .form-group select {
       padding: 9px 12px;
       border: 1px solid var(--border);
       border-radius: 7px;
@@ -270,8 +271,12 @@
       outline: none;
       transition: border-color .15s;
       color: var(--text);
+      background: #fff;
+      width: 100%;
     }
-    .form-group input:focus { border-color: var(--primary); }
+    .form-group select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; cursor: pointer; }
+    .form-group input:focus,
+    .form-group select:focus { border-color: var(--primary); }
     .form-group input::placeholder { color: #cbd5e1; }
     .field-hint { font-size: .75rem; color: #94a3b8; margin-top: 2px; }
 
@@ -358,8 +363,131 @@
     }
     .send-success svg { width: 18px; height: 18px; flex-shrink: 0; }
 
+    /* ── API KEY SETUP MODAL ── */
+    .api-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(15,23,42,.6);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+      animation: fadeIn .3s ease;
+    }
+    .api-overlay.hidden { display: none; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .api-card {
+      background: #fff; border-radius: 20px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.18);
+      width: 100%; max-width: 480px;
+      padding: 36px 32px 28px;
+      animation: slideUp .35s cubic-bezier(.16,1,.3,1);
+    }
+    @keyframes slideUp { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
+    .api-icon { font-size: 2.4rem; margin-bottom: 10px; }
+    .api-card h2 { font-size: 1.35rem; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+    .api-card p  { font-size: .88rem; color: var(--text-muted); margin-bottom: 22px; }
+    .provider-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 22px; }
+    .provider-card {
+      border: 2px solid var(--border); border-radius: 12px;
+      padding: 14px 8px; text-align: center; cursor: pointer;
+      transition: all .18s; user-select: none;
+    }
+    .provider-card:hover { border-color: var(--primary); background: var(--primary-light); }
+    .provider-card.active { border-color: var(--primary); background: var(--primary-light); box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+    .provider-card .p-icon { font-size: 1.6rem; margin-bottom: 6px; }
+    .provider-card .p-name { font-size: .82rem; font-weight: 700; color: var(--text); }
+    .provider-card .p-model { font-size: .72rem; color: var(--text-muted); margin-top: 2px; }
+    .api-input-wrap { position: relative; margin-bottom: 8px; }
+    .api-input-wrap input {
+      width: 100%; padding: 11px 44px 11px 14px;
+      border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: .9rem; color: var(--text); outline: none;
+      transition: border-color .15s; font-family: monospace;
+      box-sizing: border-box;
+    }
+    .api-input-wrap input:focus { border-color: var(--primary); }
+    .api-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); }
+    .api-eye svg { width: 18px; height: 18px; }
+    .api-hint { font-size: .75rem; color: var(--text-muted); margin-bottom: 20px; }
+    .api-hint a { color: var(--primary); text-decoration: none; font-weight: 500; }
+    .api-hint a:hover { text-decoration: underline; }
+    .btn-api-start {
+      width: 100%; padding: 12px; border: none; border-radius: 9px;
+      background: var(--primary); color: #fff;
+      font-size: .95rem; font-weight: 700; cursor: pointer;
+      transition: background .15s, transform .1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-api-start:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .btn-api-start:active { transform: translateY(0); }
+    .api-error { color: var(--danger); font-size: .8rem; margin-bottom: 10px; display: none; }
+    .api-error.show { display: block; }
+    /* Navbar API key badge */
+    .nav-api-badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: .78rem; font-weight: 600; padding: 4px 12px;
+      border-radius: 20px; cursor: pointer; border: none;
+      background: var(--primary-light); color: var(--primary-dark);
+      transition: background .15s;
+    }
+    .nav-api-badge:hover { background: #c7d2fe; }
+    .nav-api-badge svg { width: 13px; height: 13px; }
+
     @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     .fade-up { animation: fadeUp .3s ease both; }
+
+    /* ── BULK BAR ── */
+    .bulk-bar {
+      display: none; position: sticky; bottom: 0; z-index: 90;
+      background: #fff; border-top: 2px solid var(--primary);
+      box-shadow: 0 -4px 24px rgba(99,102,241,.15);
+      padding: 14px 24px; gap: 10px; flex-wrap: wrap; align-items: center;
+    }
+    .bulk-bar.visible { display: flex; }
+    .bulk-count { font-weight: 700; font-size: .9rem; color: var(--primary); white-space: nowrap; }
+    .bulk-fields { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+    .bulk-fields select, .bulk-fields input[type="date"], .bulk-fields input[type="text"] {
+      padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px;
+      font-size: .85rem; color: var(--text); background: var(--bg); outline: none;
+      transition: border-color .15s;
+    }
+    .bulk-fields select { min-width: 160px; }
+    .bulk-fields input[type="date"] { min-width: 140px; }
+    .bulk-fields input[type="text"]  { min-width: 190px; }
+    .bulk-fields select:focus,
+    .bulk-fields input:focus { border-color: var(--primary); background: #fff; }
+    .btn-bulk-send {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 20px; border: none; border-radius: 8px;
+      background: var(--primary); color: #fff;
+      font-size: .88rem; font-weight: 700; cursor: pointer;
+      transition: background .15s; white-space: nowrap;
+    }
+    .btn-bulk-send:hover { background: var(--primary-dark); }
+    .btn-bulk-send svg { width: 16px; height: 16px; }
+    .btn-bulk-clear {
+      padding: 8px 14px; border: 1px solid var(--border); border-radius: 7px;
+      background: none; color: var(--text-muted); font-size: .85rem; cursor: pointer;
+    }
+    .btn-bulk-clear:hover { border-color: var(--danger); color: var(--danger); }
+    /* row checkbox */
+    .row-check { width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary); }
+    th.cb-col, td.cb-col { width: 36px; text-align: center; }
+
+    /* ── BULK PROGRESS MODAL ── */
+    .bulk-progress-wrap { padding: 20px 0; }
+    .bulk-status-text { font-size: .9rem; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+    .bulk-prog-bar-wrap { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 16px; }
+    .bulk-prog-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #818cf8); border-radius: 99px; transition: width .3s ease; }
+    .bulk-log { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    .bulk-log-item { display: flex; align-items: center; gap: 8px; font-size: .82rem; padding: 6px 10px; border-radius: 6px; }
+    .bulk-log-item.ok  { background: var(--success-light); color: #065f46; }
+    .bulk-log-item.err { background: var(--danger-light);  color: #991b1b; }
+    .bulk-log-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .bulk-summary { display: flex; gap: 16px; margin-bottom: 16px; }
+    .bulk-summary-card { flex: 1; border-radius: 8px; padding: 12px 16px; text-align: center; }
+    .bulk-summary-card .num { font-size: 1.6rem; font-weight: 800; }
+    .bulk-summary-card .lbl { font-size: .75rem; margin-top: 2px; }
+    .bulk-summary-card.sent { background: var(--success-light); color: #065f46; }
+    .bulk-summary-card.fail { background: var(--danger-light);  color: #991b1b; }
 
     @media (max-width: 600px) {
       nav { padding: 0 16px; }
@@ -378,24 +506,97 @@
 <!-- NAVBAR -->
 <nav>
   <div class="nav-brand">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
-    </svg>
-    HR Offer Letter Generator
+    <img src="/logo" alt="OfferStack" />
+    OfferStack
   </div>
   <div style="display:flex;align-items:center;gap:10px">
-    <button id="gmailBadge" class="gmail-badge disconnected" onclick="handleGmailBadgeClick()" title="Gmail connection status">
+    <div style="position:relative;display:flex;align-items:center;gap:4px;">
+      <button id="gmailBadge" class="gmail-badge disconnected" onclick="handleGmailBadgeClick()" title="Gmail connection status">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
+        </svg>
+        <span id="gmailBadgeText">Gmail: Not connected</span>
+      </button>
+      <!-- Help icon -->
+      <button id="gmailHelpBtn" onclick="toggleGmailHelp(event)"
+        style="width:18px;height:18px;border-radius:50%;border:1.5px solid #94a3b8;background:none;color:#64748b;font-size:.7rem;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1;"
+        title="How to connect Gmail">?</button>
+      <!-- Tooltip -->
+      <div id="gmailHelpBox" style="display:none;position:absolute;top:calc(100% + 10px);right:0;z-index:300;
+        background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;width:270px;
+        box-shadow:0 8px 32px rgba(0,0,0,.13);animation:fadeUp .2s ease;">
+        <div style="font-weight:700;font-size:.85rem;margin-bottom:10px;color:#0f172a;">How to connect Gmail</div>
+        <ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;">
+          <li style="font-size:.8rem;color:#334155;">Click <b>"Gmail: Not connected"</b> button</li>
+          <li style="font-size:.8rem;color:#334155;">A Google sign-in page will open — choose your account</li>
+          <li style="font-size:.8rem;color:#334155;">Click <b>"Allow"</b> to grant permission to send emails</li>
+          <li style="font-size:.8rem;color:#334155;">You'll be redirected back automatically</li>
+          <li style="font-size:.8rem;color:#334155;">Badge turns <b style="color:#10b981;">green</b> — you're connected!</li>
+        </ol>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9;font-size:.75rem;color:#94a3b8;">
+          Each user connects their own Gmail account. Your token is stored in your browser session only.
+        </div>
+      </div>
+    </div>
+    <button class="nav-api-badge" id="navApiBtn" onclick="openApiModal()">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z"/>
       </svg>
-      <span id="gmailBadgeText">Gmail: Not connected</span>
+      <span id="navApiText">Set API Key</span>
     </button>
-    <span class="nav-badge">AI-Powered</span>
   </div>
 </nav>
 
+<!-- API KEY SETUP MODAL -->
+<div class="api-overlay" id="apiOverlay">
+  <div class="api-card">
+    <div class="api-icon">🔑</div>
+    <h2>Choose Your AI Provider</h2>
+    <p>Select a provider and enter your API key. Your key is stored locally and never sent to our servers.</p>
+
+    <div class="provider-grid">
+      <div class="provider-card active" data-provider="groq" onclick="selectProvider(this)">
+        <div class="p-icon">⚡</div>
+        <div class="p-name">Groq</div>
+        <div class="p-model">LLaMA 3.3 70B</div>
+      </div>
+      <div class="provider-card" data-provider="openai" onclick="selectProvider(this)">
+        <div class="p-icon">🤖</div>
+        <div class="p-name">OpenAI</div>
+        <div class="p-model">GPT-4o Mini</div>
+      </div>
+      <div class="provider-card" data-provider="claude" onclick="selectProvider(this)">
+        <div class="p-icon">🧠</div>
+        <div class="p-name">Claude</div>
+        <div class="p-model">Haiku 4.5</div>
+      </div>
+    </div>
+
+    <div class="api-input-wrap">
+      <input type="password" id="apiKeyInput" placeholder="Paste your API key here..." autocomplete="off" />
+      <button class="api-eye" onclick="toggleApiKeyVisibility()" title="Show/hide key">
+        <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="api-hint" id="apiHint">
+      Get your free Groq key at <a href="https://console.groq.com" target="_blank">console.groq.com</a>
+    </div>
+    <div class="api-error" id="apiError">Please enter a valid API key.</div>
+
+    <button class="btn-api-start" onclick="saveApiKey()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="width:17px;height:17px">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
+      </svg>
+      Get Started
+    </button>
+  </div>
+</div>
+
 <main>
-  <h1 class="page-title">Job Offer Letter Generator</h1>
+  <h1 class="page-title">OfferStack</h1>
   <p class="page-sub">Upload an .xlsx, .xls, or .pdf file to extract candidates — then generate a formal job offer letter (email + PDF) for each person.</p>
 
   <!-- UPLOAD CARD -->
@@ -495,6 +696,7 @@
         <table>
           <thead>
             <tr>
+              <th class="cb-col"><input type="checkbox" id="selectAll" class="row-check" title="Select all" /></th>
               <th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>Skills</th><th>Action</th>
             </tr>
           </thead>
@@ -505,6 +707,57 @@
     </div>
   </div>
 </main>
+
+<!-- BULK ACTION BAR -->
+<div class="bulk-bar" id="bulkBar">
+  <span class="bulk-count" id="bulkCount">0 selected</span>
+  <div class="bulk-fields">
+    <input type="text"  id="bCompany"    value="Vorldx Adgorithm Lab" placeholder="Company" />
+    <select id="bPosition">
+      <option value="" disabled selected>Select Role *</option>
+      <option value="Web Developer">Web Developer</option>
+      <option value="HR Intern">HR Intern</option>
+      <option value="AI Image and Video Specialist">AI Image and Video Specialist</option>
+    </select>
+    <input type="date"  id="bStartDate" />
+    <select id="bSalary">
+      <option value="">Stipend (optional)</option>
+      <option value="Rs. 15,000 per month">Rs. 15,000 / month</option>
+      <option value="Unpaid Internship">Unpaid</option>
+    </select>
+  </div>
+  <button class="btn-bulk-send" onclick="bulkGenerateAndSend()">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/>
+    </svg>
+    Generate &amp; Send All
+  </button>
+  <button class="btn-bulk-clear" onclick="clearBulkSelection()">Clear</button>
+</div>
+
+<!-- BULK PROGRESS MODAL -->
+<div class="modal-overlay" id="bulkOverlay">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <div class="modal-head-info">
+        <h3 id="bulkModalTitle">Sending Offer Letters</h3>
+        <p id="bulkModalSub">Please wait, do not close this window.</p>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="bulk-progress-wrap">
+        <div class="bulk-status-text" id="bulkStatusText">Starting...</div>
+        <div class="bulk-prog-bar-wrap">
+          <div class="bulk-prog-bar-fill" id="bulkProgBar" style="width:0%"></div>
+        </div>
+        <div class="bulk-log" id="bulkLog"></div>
+      </div>
+    </div>
+    <div class="modal-foot" id="bulkDoneFoot" style="display:none;">
+      <button class="btn-action indigo" onclick="closeBulkModal()">Done</button>
+    </div>
+  </div>
+</div>
 
 <!-- OFFER MODAL -->
 <div class="modal-overlay" id="modalOverlay">
@@ -528,11 +781,16 @@
       <div class="form-grid">
         <div class="form-group">
           <label>Company Name <span style="color:var(--danger)">*</span></label>
-          <input type="text" id="fCompany" placeholder="Acme Corp" />
+          <input type="text" id="fCompany" placeholder="Vorldx Adgorithm Lab" />
         </div>
         <div class="form-group">
           <label>Position / Role <span style="color:var(--danger)">*</span></label>
-          <input type="text" id="fPosition" placeholder="Software Engineer" />
+          <select id="fPosition">
+            <option value="" disabled selected>Select a role</option>
+            <option value="Web Developer">Web Developer</option>
+            <option value="HR Intern">HR Intern</option>
+            <option value="AI Image and Video Specialist">AI Image and Video Specialist</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Department</label>
@@ -541,13 +799,16 @@
         </div>
         <div class="form-group">
           <label>Start Date</label>
-          <input type="text" id="fStartDate" placeholder="July 1, 2026" />
+          <input type="date" id="fStartDate" />
           <span class="field-hint">Optional</span>
         </div>
         <div class="form-group full">
-          <label>Salary / CTC</label>
-          <input type="text" id="fSalary" placeholder="e.g. ₹8 LPA or $60,000/year" />
-          <span class="field-hint">Optional — leave blank to omit from the letter</span>
+          <label>Stipend / CTC</label>
+          <select id="fSalary">
+            <option value="" selected>Select stipend (optional)</option>
+            <option value="Rs. 15,000 per month">Rs. 15,000 per month</option>
+            <option value="Unpaid Internship">Unpaid Internship</option>
+          </select>
         </div>
       </div>
     </div>
@@ -624,6 +885,7 @@
   let selectedFile = null;
   let allData = [];
   let currentRecord = null;
+  const selectedEmails = new Set();
   let currentPdfB64 = null;
   let currentName   = "";
 
@@ -683,10 +945,36 @@
     return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   }
 
+  function updateBulkBar() {
+    const n = selectedEmails.size;
+    document.getElementById("bulkBar").classList.toggle("visible", n > 0);
+    document.getElementById("bulkCount").textContent = `${n} candidate${n !== 1 ? "s" : ""} selected`;
+    const boxes = [...tableBody.querySelectorAll(".row-check")];
+    const checked = boxes.filter(b => b.checked).length;
+    const sa = document.getElementById("selectAll");
+    sa.checked       = boxes.length > 0 && checked === boxes.length;
+    sa.indeterminate = checked > 0 && checked < boxes.length;
+  }
+
+  function clearBulkSelection() {
+    selectedEmails.clear();
+    tableBody.querySelectorAll(".row-check").forEach(b => b.checked = false);
+    updateBulkBar();
+  }
+
+  document.getElementById("selectAll").addEventListener("change", function() {
+    tableBody.querySelectorAll(".row-check").forEach(cb => {
+      cb.checked = this.checked;
+      const email = cb.dataset.email;
+      this.checked ? selectedEmails.add(email) : selectedEmails.delete(email);
+    });
+    updateBulkBar();
+  });
+
   function renderTable(data) {
     tableBody.innerHTML = "";
     if (!data.length) {
-      tableBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">
+      tableBody.innerHTML = `<tr><td colspan="7"><div class="empty-state">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
         </svg>
@@ -700,7 +988,11 @@
         ? row.skills.split(/[,;|]/).map(s => `<span class="skill-tag">${escHtml(s.trim())}</span>`).join("")
         : `<span class="dash">—</span>`;
       const encoded = encodeURIComponent(JSON.stringify(row));
+      const isChecked = selectedEmails.has(row.email);
       tr.innerHTML = `
+        <td class="cb-col">
+          <input type="checkbox" class="row-check" data-email="${escHtml(row.email)}" ${isChecked ? "checked" : ""} />
+        </td>
         <td style="color:var(--text-muted);font-size:.82rem">${i + 1}</td>
         <td style="font-weight:500">${escHtml(row.name || "—")}</td>
         <td><span class="email-chip">
@@ -720,8 +1012,13 @@
             Generate Offer
           </button>
         </td>`;
+      tr.querySelector(".row-check").addEventListener("change", function() {
+        this.checked ? selectedEmails.add(row.email) : selectedEmails.delete(row.email);
+        updateBulkBar();
+      });
       tableBody.appendChild(tr);
     });
+    updateBulkBar();
   }
 
   // ── Modal helpers ──────────────────────────────────────────────────────────
@@ -742,9 +1039,11 @@
     modalSub.textContent   = `For ${currentName} · ${currentRecord.email}`;
 
     // Reset form
-    ["fCompany","fPosition","fDepartment","fStartDate","fSalary"].forEach(id => {
+    ["fCompany","fDepartment","fStartDate"].forEach(id => {
       document.getElementById(id).value = "";
     });
+    document.getElementById("fPosition").selectedIndex = 0;
+    document.getElementById("fSalary").selectedIndex   = 0;
 
     showStage("form");
     modalOverlay.classList.add("open");
@@ -761,12 +1060,17 @@
 
     showStage("loading");
 
+    const rawDate = document.getElementById("fStartDate").value;
+    const formattedDate = rawDate
+      ? new Date(rawDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
+      : "To be confirmed";
+
     const jobDetails = {
       company,
       position,
       department: document.getElementById("fDepartment").value.trim(),
-      start_date: document.getElementById("fStartDate").value.trim() || "To be confirmed",
-      salary:     document.getElementById("fSalary").value.trim(),
+      start_date: formattedDate,
+      salary:     document.getElementById("fSalary").value,
     };
 
     try {
@@ -810,11 +1114,12 @@
 
   document.getElementById("generateBtn").addEventListener("click", submitOffer);
 
-  // Reset red borders on input
-  ["fCompany","fPosition"].forEach(id => {
-    document.getElementById(id).addEventListener("input", function() {
-      this.style.borderColor = "";
-    });
+  // Reset red borders on input/change
+  document.getElementById("fCompany").addEventListener("input", function() {
+    this.style.borderColor = "";
+  });
+  document.getElementById("fPosition").addEventListener("change", function() {
+    this.style.borderColor = "";
   });
 
   // ── Download PDF ───────────────────────────────────────────────────────────
@@ -911,6 +1216,16 @@
     }
   }
 
+  function toggleGmailHelp(e) {
+    e.stopPropagation();
+    const box = document.getElementById("gmailHelpBox");
+    box.style.display = box.style.display === "none" ? "block" : "none";
+  }
+  document.addEventListener("click", () => {
+    const box = document.getElementById("gmailHelpBox");
+    if (box) box.style.display = "none";
+  });
+
   function handleGmailBadgeClick() {
     if (gmailAuthorized) {
       if (confirm("Disconnect Gmail? You will need to reconnect to send emails.")) {
@@ -978,10 +1293,194 @@
   });
 
   // On load: check Gmail status and handle ?gmail=connected redirect
+  // ── API KEY MANAGEMENT ────────────────────────────────────────────────────
+  const PROVIDER_HINTS = {
+    groq:   { text: 'Get your free Groq key at <a href="https://console.groq.com" target="_blank">console.groq.com</a>', prefix: "gsk_" },
+    openai: { text: 'Get your OpenAI key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>', prefix: "sk-" },
+    claude: { text: 'Get your Anthropic key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>', prefix: "sk-ant-" },
+  };
+
+  let apiConfig = JSON.parse(localStorage.getItem("ai_api_config") || "null");
+
+  function openApiModal() {
+    document.getElementById("apiOverlay").classList.remove("hidden");
+    if (apiConfig) {
+      document.getElementById("apiKeyInput").value = apiConfig.apiKey;
+      document.querySelectorAll(".provider-card").forEach(c => {
+        c.classList.toggle("active", c.dataset.provider === apiConfig.provider);
+      });
+    }
+  }
+
+  function selectProvider(el) {
+    document.querySelectorAll(".provider-card").forEach(c => c.classList.remove("active"));
+    el.classList.add("active");
+    const p = el.dataset.provider;
+    document.getElementById("apiHint").innerHTML = PROVIDER_HINTS[p].text;
+    document.getElementById("apiKeyInput").placeholder = `Paste your ${el.querySelector(".p-name").textContent} API key...`;
+    document.getElementById("apiError").classList.remove("show");
+  }
+
+  function toggleApiKeyVisibility() {
+    const inp = document.getElementById("apiKeyInput");
+    inp.type = inp.type === "password" ? "text" : "password";
+  }
+
+  function saveApiKey() {
+    const key      = document.getElementById("apiKeyInput").value.trim();
+    const provider = document.querySelector(".provider-card.active")?.dataset.provider || "groq";
+    const errEl    = document.getElementById("apiError");
+    if (!key || key.length < 10) { errEl.classList.add("show"); return; }
+    errEl.classList.remove("show");
+    apiConfig = { provider, apiKey: key };
+    localStorage.setItem("ai_api_config", JSON.stringify(apiConfig));
+    document.getElementById("apiOverlay").classList.add("hidden");
+    updateNavApiBtn();
+  }
+
+  function updateNavApiBtn() {
+    if (!apiConfig) return;
+    const names = { groq: "Groq", openai: "OpenAI", claude: "Claude" };
+    document.getElementById("navApiText").textContent = names[apiConfig.provider] + " Key Set";
+  }
+
+  // Show modal on first load if no key saved
+  if (!apiConfig) {
+    document.getElementById("apiOverlay").classList.remove("hidden");
+  } else {
+    document.getElementById("apiOverlay").classList.add("hidden");
+    updateNavApiBtn();
+  }
+
+  // Inject provider+key into every generate-offer call
+  const _origFetch = window.fetch;
+  window.fetch = function(url, opts = {}) {
+    if (typeof url === "string" && url === "/generate-offer" && apiConfig) {
+      try {
+        const body = JSON.parse(opts.body || "{}");
+        body.provider = apiConfig.provider;
+        body.api_key  = apiConfig.apiKey;
+        opts = { ...opts, body: JSON.stringify(body) };
+      } catch(_) {}
+    }
+    return _origFetch(url, opts);
+  };
+
   checkGmailStatus();
   if (new URLSearchParams(window.location.search).get("gmail") === "connected") {
     history.replaceState({}, "", "/");
     setTimeout(() => alert("Gmail connected! You can now send emails directly."), 300);
+  }
+
+  // ── BULK GENERATE & SEND ───────────────────────────────────────────────────
+  async function bulkGenerateAndSend() {
+    const records = allData.filter(r => selectedEmails.has(r.email)).slice(0, 50);
+    if (!records.length) return;
+
+    const rawDate = document.getElementById("bStartDate").value;
+    const fmtDate = rawDate
+      ? new Date(rawDate + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
+      : "To be confirmed";
+
+    const jobDetails = {
+      company:    document.getElementById("bCompany").value.trim() || "Vorldx Adgorithm Lab",
+      position:   document.getElementById("bPosition").value,
+      department: "",
+      start_date: fmtDate,
+      salary:     document.getElementById("bSalary").value,
+    };
+
+    if (!jobDetails.position) {
+      document.getElementById("bPosition").style.borderColor = "var(--danger)";
+      document.getElementById("bPosition").focus();
+      return;
+    }
+
+    if (!gmailAuthorized) {
+      if (confirm("Gmail is not connected. Connect now?")) window.location.href = "/auth/google";
+      return;
+    }
+
+    // Show progress modal
+    const overlay   = document.getElementById("bulkOverlay");
+    const statusTxt = document.getElementById("bulkStatusText");
+    const progBar   = document.getElementById("bulkProgBar");
+    const logEl     = document.getElementById("bulkLog");
+    const doneFoot  = document.getElementById("bulkDoneFoot");
+    const titleEl   = document.getElementById("bulkModalTitle");
+    const subEl     = document.getElementById("bulkModalSub");
+
+    titleEl.textContent = `Sending to ${records.length} candidate${records.length > 1 ? "s" : ""}`;
+    subEl.textContent   = "Please wait — do not close this window.";
+    logEl.innerHTML     = "";
+    progBar.style.width = "0%";
+    doneFoot.style.display = "none";
+    overlay.classList.add("open");
+
+    let sent = 0, failed = 0;
+
+    for (let i = 0; i < records.length; i++) {
+      const rec = records[i];
+      const pct = Math.round(((i) / records.length) * 100);
+      progBar.style.width = pct + "%";
+      statusTxt.textContent = `Processing ${i + 1} of ${records.length} — ${rec.name || rec.email}`;
+
+      try {
+        // Step 1: Generate offer + PDF
+        const genRes  = await fetch("/generate-offer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record: rec, job_details: jobDetails }),
+        });
+        const gen = await genRes.json();
+        if (gen.error) throw new Error(gen.error);
+
+        // Step 2: Send via Gmail
+        const sendRes = await fetch("/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to_email:       rec.email,
+            email_draft:    gen.email_draft,
+            pdf_base64:     gen.pdf_base64,
+            candidate_name: rec.name || rec.email,
+          }),
+        });
+        const send = await sendRes.json();
+        if (send.success) {
+          sent++;
+          logEl.insertAdjacentHTML("beforeend", `
+            <div class="bulk-log-item ok">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+              <span><b>${escHtml(rec.name || rec.email)}</b> &mdash; Sent successfully</span>
+            </div>`);
+        } else {
+          throw new Error(send.error || "Send failed");
+        }
+      } catch (e) {
+        failed++;
+        logEl.insertAdjacentHTML("beforeend", `
+          <div class="bulk-log-item err">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+            <span><b>${escHtml(rec.name || rec.email)}</b> &mdash; ${escHtml(e.message)}</span>
+          </div>`);
+      }
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // Done
+    progBar.style.width = "100%";
+    statusTxt.textContent = "Done!";
+    titleEl.textContent   = "Bulk Send Complete";
+    subEl.innerHTML = `
+      <span style="color:var(--success);font-weight:700;">${sent} sent</span>
+      ${failed ? ` &nbsp;|&nbsp; <span style="color:var(--danger);font-weight:700;">${failed} failed</span>` : ""}`;
+    doneFoot.style.display = "flex";
+  }
+
+  function closeBulkModal() {
+    document.getElementById("bulkOverlay").classList.remove("open");
+    clearBulkSelection();
   }
 </script>
 </body>

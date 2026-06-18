@@ -3,12 +3,11 @@ import os
 import re
 import pandas as pd
 import pdfplumber
-from groq import Groq
 from dotenv import load_dotenv
-from flask import Flask, request, render_template, jsonify, redirect
+from flask import Flask, request, render_template, jsonify, redirect, session, send_from_directory
 from werkzeug.utils import secure_filename
 from generators.offer import generate_offer_letter
-from generators.mailer import build_flow, get_credentials, save_credentials, is_authorized, send_offer_email
+from generators.mailer import build_flow, creds_from_json, send_offer_email
 
 load_dotenv(override=True)
 
@@ -33,7 +32,8 @@ SKILL_SECTION = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
-_groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
+_fallback_provider = "groq"
+_fallback_api_key  = os.getenv("GROQ_API_KEY", "")
 
 
 def allowed_file(filename):
@@ -220,6 +220,14 @@ def extract_from_pdf(filepath: str) -> list[dict]:
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+@app.route("/logo")
+def serve_logo():
+    assets = os.path.join(os.path.dirname(__file__), "assets")
+    for fname in os.listdir(assets):
+        if fname.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".webp")):
+            return send_from_directory(assets, fname)
+    return "", 404
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -263,19 +271,25 @@ def generate_offer():
     if not record:
         return jsonify({"error": "Missing record"}), 400
 
+    provider = body.get("provider", _fallback_provider)
+    api_key  = body.get("api_key",  _fallback_api_key)
+    if not api_key:
+        return jsonify({"error": "No API key provided. Please set your API key first."}), 400
+
     try:
-        email_draft, pdf_base64 = generate_offer_letter(record, job_details, _groq)
+        email_draft, pdf_base64 = generate_offer_letter(record, job_details, provider, api_key)
     except Exception as exc:
         return jsonify({"error": f"Generation error: {exc}"}), 500
 
     return jsonify({"email_draft": email_draft, "pdf_base64": pdf_base64})
 
 
-# ── Gmail OAuth ───────────────────────────────────────────────────────────────
+# ── Gmail OAuth (session-based — each user has their own token) ───────────────
 
 @app.route("/auth/status")
 def auth_status():
-    return jsonify({"authorized": is_authorized()})
+    authorized = creds_from_json(session.get("gmail_creds")) is not None
+    return jsonify({"authorized": authorized})
 
 
 _pending_oauth = {}  # holds code_verifier between /auth/google and /auth/callback
@@ -295,15 +309,13 @@ def auth_callback():
     flow = build_flow(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI)
     flow.code_verifier = _pending_oauth.pop("code_verifier", None)
     flow.fetch_token(authorization_response=request.url)
-    save_credentials(flow.credentials)
+    session["gmail_creds"] = flow.credentials.to_json()
     return redirect("/?gmail=connected")
 
 
 @app.route("/auth/revoke", methods=["POST"])
 def auth_revoke():
-    token_path = os.path.join(os.path.dirname(__file__), "token.json")
-    if os.path.exists(token_path):
-        os.remove(token_path)
+    session.pop("gmail_creds", None)
     return jsonify({"success": True})
 
 
@@ -332,8 +344,12 @@ def send_email_route():
     safe_name = candidate_name.replace(" ", "_")
     pdf_fname = f"offer_letter_{safe_name}.pdf"
 
+    creds_json = session.get("gmail_creds")
+    if not creds_json:
+        return jsonify({"error": "Gmail not connected. Please connect your account first."}), 400
+
     try:
-        ok, msg = send_offer_email(to_email, subject, body_text, pdf_bytes, pdf_fname)
+        ok, msg = send_offer_email(creds_json, to_email, subject, body_text, pdf_bytes, pdf_fname)
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 

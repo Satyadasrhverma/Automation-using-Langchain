@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<style>
+  @page {
+    size: A4;
+    margin: 2cm 2.5cm 2cm 2.5cm;
+  }
+  body {
+    font-family: Times-Roman, serif;
+    font-size: 11pt;
+    line-height: 1.65;
+    color: #111;
+  }
+  table { border-collapse: collapse; }
+  .header-table { width: 100%; margin-bottom: 24px; }
+  .logo-cell    { text-align: right; vertical-align: top; width: 170px; }
+  .logo-img     { max-height: 75px; max-width: 160px; }
+  .date         { margin-bottom: 18px; }
+  .recipient    { margin-bottom: 20px; line-height: 1.55; }
+  .salutation   { margin-bottom: 16px; }
+  .para         { margin-bottom: 14px; text-align: justify; }
+  .section-divider {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 18px 0;
+  }
+  .sig-table  { width: 100%; margin-top: 10px; margin-bottom: 6px; }
+  .sig-cell   { width: 45%; vertical-align: bottom; }
+  .sig-gap    { width: 10%; }
+  .sig-line   {
+    border-top: 1px solid #333;
+    padding-top: 4px;
+    font-size: 9pt;
+    color: #555;
+  }
+  .footer {
+    margin-top: 22px;
+    border-top: 1.5px solid #2563eb;
+    padding-top: 7px;
+    font-size: 8pt;
+    color: #888;
+    text-align: center;
+  }
+  b { font-weight: bold; }
+  .company-fallback {
+    font-size: 14pt;
+    font-weight: bold;
+    color: #2563eb;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER: logo top-right ─────────────────────────────────────── -->
+<table class="header-table">
+  <tr>
+    <td></td>
+    <td class="logo-cell">
+      {% if logo_src %}
+        <img src="{{ logo_src }}" class="logo-img" alt="{{ company }}" />
+      {% else %}
+        <span class="company-fallback">{{ company }}</span>
+      {% endif %}
+    </td>
+  </tr>
+</table>
+
+<!-- ── DATE ──────────────────────────────────────────────────────── -->
+<div class="date">{{ date }}</div>
+
+<!-- ── RECIPIENT ─────────────────────────────────────────────────── -->
+<div class="recipient">
+  <b>{{ name }}</b><br/>
+  {% if email %}{{ email }}<br/>{% endif %}
+</div>
+
+<!-- ── SALUTATION ────────────────────────────────────────────────── -->
+<div class="salutation">Dear {{ first_name }},</div>
+
+<!-- ── PARAGRAPH 1 — Offer ───────────────────────────────────────── -->
+<p class="para">
+  We are pleased to offer you the <b>{{ employment_type }}</b> position of
+  <b>{{ position }}</b>{{ dept_text }} at <b>{{ company }}</b> with a start
+  date of <b>{{ start_date }}</b>, contingent upon successful completion of a
+  background verification and submission of required documentation (I-9 form,
+  etc.). You will be reporting directly to the HR Department at our office
+  location. We believe your skills and experience are an excellent match for
+  our company.
+</p>
+
+<!-- ── PARAGRAPH 2 — Duties ─────────────────────────────────────── -->
+<p class="para">
+  In this role, you will be required to {{ duties_text }}.
+</p>
+
+<!-- ── PARAGRAPH 3 — Compensation ───────────────────────────────── -->
+{% if salary %}
+<p class="para">
+  The stipend/compensation for this position is <b>{{ salary }}</b>, to be
+  paid on a monthly basis by direct deposit, starting on your first pay
+  period.
+</p>
+{% else %}
+<p class="para">
+  Details regarding compensation and benefits will be discussed and confirmed
+  prior to your start date.
+</p>
+{% endif %}
+
+<!-- ── PARAGRAPH 4 — At-will ────────────────────────────────────── -->
+<p class="para">
+  Your employment with <b>{{ company }}</b> will be on an at-will basis,
+  which means you and the company are free to terminate the employment
+  relationship at any time for any reason. This letter is not a contract or
+  guarantee of employment for a specific period of time.
+</p>
+
+<!-- ── ACCEPTANCE REQUEST ───────────────────────────────────────── -->
+<p class="para">
+  Please confirm your acceptance of this offer by signing and returning a
+  copy of this letter by the acceptance deadline noted below. Should you have
+  any questions, please do not hesitate to reach out to our HR team.
+</p>
+
+<p>Sincerely,</p>
+<br/><br/>
+
+<!-- ── HR SIGNATURE ─────────────────────────────────────────────── -->
+<table class="sig-table">
+  <tr>
+    <td class="sig-cell">
+      <div class="sig-line">Authorized Signature</div>
+    </td>
+    <td class="sig-gap"></td>
+    <td class="sig-cell">
+      <div class="sig-line">Date</div>
+    </td>
+  </tr>
+</table>
+
+<p style="margin-top:10px;">
+  <b>Human Resources Team</b><br/>
+  <b>{{ company }}</b>
+</p>
+
+<p><b>Acceptance Deadline:</b>&nbsp; ___________________________</p>
+
+<hr class="section-divider" />
+
+<!-- ── CANDIDATE ACCEPTANCE ─────────────────────────────────────── -->
+<p><b>Candidate Acceptance</b></p>
+<p style="font-size:9pt;color:#555;margin-top:0;">
+  I have read and understood the terms of this offer and accept the position
+  as described above.
+</p>
+
+<table class="sig-table">
+  <tr>
+    <td class="sig-cell">
+      <div class="sig-line">Candidate Signature</div>
+    </td>
+    <td class="sig-gap"></td>
+    <td class="sig-cell">
+      <div class="sig-line">Date</div>
+    </td>
+  </tr>
+</table>
+
+<!-- ── FOOTER ───────────────────────────────────────────────────── -->
+<div class="footer">
+  Confidential &nbsp;|&nbsp; {{ company }} &nbsp;|&nbsp; Generated on {{ date }}
+</div>
+
+</body>
+</html>
