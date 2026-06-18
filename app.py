@@ -303,7 +303,6 @@ def auth_status():
 def auth_google():
     flow = build_flow(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI)
     auth_url, state = flow.authorization_url(access_type="offline", prompt="select_account consent")
-    session["oauth_code_verifier"] = flow.code_verifier
     session["oauth_state"] = state
     return redirect(auth_url)
 
@@ -311,7 +310,6 @@ def auth_google():
 @app.route("/auth/callback")
 def auth_callback():
     flow = build_flow(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI)
-    flow.code_verifier = session.pop("oauth_code_verifier", None)
     flow.fetch_token(authorization_response=request.url)
     session["gmail_creds"] = flow.credentials.to_json()
     return redirect("/?gmail=connected")
